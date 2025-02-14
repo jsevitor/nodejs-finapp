@@ -10,14 +10,14 @@ const router = express.Router();
 // Rotas de Usuários
 router.get("/usuarios", users.getUsers);
 router.post("/usuarios", users.createUser);
-router.put("/usuarios/:id", users.updateUser);
-router.delete("/usuarios/:id", users.deleteUser);
+router.put("/usuarios", users.updateUser);
+router.delete("/usuarios", users.deleteUser);
 
 // Rotas de Categorias
 router.get("/categorias", categories.getCategory);
 router.post("/categorias", categories.createCategory);
-router.put("/categorias/:id", categories.updateCategory);
-router.delete("/categorias/:id", categories.deleteCategory);
+router.put("/categorias", categories.updateCategory);
+router.delete("/categorias", categories.deleteCategory);
 
 // Rotas de Cartões
 router.get("/cartoes", cards.getCards);
