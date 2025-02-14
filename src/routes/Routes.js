@@ -21,9 +21,9 @@ router.delete("/categorias", categories.deleteCategory);
 
 // Rotas de Cartões
 router.get("/cartoes", cards.getCards);
-router.post("/cartoes", cards.createCard);
-router.post("/cartoes", cards.updateCard);
-router.post("/cartoes", cards.deleteCard);
+router.post("/cartoes", cards.createCard);  
+router.put("/cartoes", cards.updateCard);   
+router.delete("/cartoes", cards.deleteCard); 
 
 // Rotas de Receitas
 router.get("/receitas", incomes.getIncomes);
