@@ -3,7 +3,7 @@ import { pool } from "../config/configDB.js";
 const expenses = {
   getExpenses: async (req, res) => {
     try {
-      const result = await pool.query("SELECT * FROM despesas");
+      const result = await pool.query("SELECT * FROM despesas_completas()");
       res.status(200).json(result.rows);
     } catch (error) {
       console.error(error);
@@ -18,32 +18,78 @@ const expenses = {
       descricao,
       estabelecimento,
       categoria_id,
-      parcelas,
-      parcela_atual,
+      parcelas,   // Número de parcelas informado pelo usuário
       valor,
       cartao_id,
+      parcelada,  // Novo campo booleano para saber se a compra é parcelada
     } = req.body;
+  
     try {
-      const result = await pool.query(
-        "INSERT INTO despesas (data, autor, descricao, estabelecimento, categoria_id, parcelas, parcela_atual, valor, cartao_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
-        [
-          data,
-          autor,
-          descricao,
-          estabelecimento,
-          categoria_id,
-          parcelas,
-          parcela_atual,
-          valor,
-          cartao_id,
-        ]
-      );
-      res.status(201).json(result.rows[0]);
+      // Validação dos campos obrigatórios
+      if (!data || !autor || !descricao || !valor || !cartao_id) {
+        return res.status(400).json({ error: "Campos obrigatórios faltando" });
+      }
+  
+      // Se a despesa for parcelada, ajusta o número de parcelas
+      const numeroParcelas = parcelada ? parcelas : 1; // Se for parcelada, usa o número de parcelas informado, senão, usa 1
+      const valorParcela = valor / numeroParcelas; // Divide o valor total pela quantidade de parcelas
+  
+      const dataInicial = new Date(data);
+      const queries = [];
+  
+      // Se for parcelada, cria as parcelas
+      if (parcelada) {
+        for (let i = 1; i <= numeroParcelas; i++) {
+          const novaData = new Date(dataInicial);
+          novaData.setMonth(novaData.getMonth() + (i - 1)); // Avança 1 mês por parcela
+  
+          const query = pool.query(
+            `INSERT INTO despesas (data, autor, descricao, estabelecimento, categoria_id, parcelas, parcela_atual, valor, cartao_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+            [
+              novaData,
+              autor,
+              descricao,
+              estabelecimento,
+              categoria_id,
+              numeroParcelas,
+              i, // Número da parcela atual
+              valorParcela,
+              cartao_id,
+            ]
+          );
+  
+          queries.push(query);
+        }
+      } else {
+        // Se não for parcelada, cria uma única parcela
+        const query = pool.query(
+          `INSERT INTO despesas (data, autor, descricao, estabelecimento, categoria_id, parcelas, parcela_atual, valor, cartao_id) 
+           VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8) RETURNING *`,
+          [
+            dataInicial,
+            autor,
+            descricao,
+            estabelecimento,
+            categoria_id,
+            numeroParcelas, // Nesse caso, será 1
+            valor,
+            cartao_id,
+          ]
+        );
+  
+        queries.push(query);
+      }
+  
+      // Executa as queries (caso seja parcelado, vai ser em paralelo para cada parcela)
+      const results = await Promise.all(queries);
+      res.status(200).json({ message: "Despesa cadastrada", parcelas: results.map(r => r.rows[0]) });
+  
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Erro ao criar despesa" });
     }
-  },
+  },  
 
   updateExpense: async (req, res) => {
     const {
